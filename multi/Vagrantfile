@@ -1,0 +1,50 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+[
+  { :name => "vagrant-scp", :version => ">= 0.5.7" },
+  { :name => "vagrant-puppet-install", :version => ">= 5.0.0" },
+  { :name => "vagrant-vbguest", :version => ">= 0.15.1" }
+].each do |plugin|
+  if not Vagrant.has_plugin?(plugin[:name], plugin[:version])
+#    raise "#{plugin[:name]} #[plugin[:version]} is required. Please run `vagrant plugin install #{plugin[:name]}`"
+    system "vagrant plugin install #{plugin}"
+  end
+end
+
+Vagrant.configure("2") do |config|
+  config.vm.synced_folder ".", "/vagrant", :mount_options => ['dmode=775','fmode=777']
+  config.vm.provider "virtualbox" do |v|
+    v.customize ["modifyvm", :id, "--memory", "2048"]
+    v.linked_clone = true
+  config.puppet_install.puppet_version = :latest
+  config.vm.provision "shell", inline: "/opt/puppetlabs/bin/puppet --version"
+  config.vm.provision "shell", inline: "/opt/puppetlabs/puppet/bin/gem install r10k hiera-eyaml"
+  config.vm.provision "shell", inline: "/opt/puppetlabs/puppet/bin/r10k --version"
+  config.vm.provision "shell", inline: "/opt/puppetlabs/puppet/bin/hiera-eyaml --version"
+
+# Advanced Puppet Example
+  #config.vm.provision :shell, :privileged => false do |shell|
+  #  shell.inline = "puppet apply --debug --modulepath '/vagrant/#{ENV.fetch('MODULES_PATH', 'modules')}' --detailed-exitcodes '/vagrant/#{ENV.fetch('MANIFESTS_PATH', 'manifests')}/#{ENV.fetch('MANIFEST_FILE', 'site.pp')}'"
+  #end
+
+  end
+  config.vm.define "ubuntu1" do |v|
+    v.vm.box = "ubuntu/xenial64"
+    v.vm.hostname = "ubuntu1.contoso.ltd"
+    v.vm.network "private_network", ip: "192.168.0.21"
+  end
+
+  config.vm.define "debian1" do |v|
+    v.vm.box = "debian/jessie64"
+    v.vm.hostname = "debian1.contoso.ltd"
+    v.vm.network "private_network", ip: "192.168.0.31"
+  end
+
+  config.vm.define "centos1" do |v|
+    v.vm.box = "centos/7"
+#   v.vm.box_url = "http://cloud.centos.org/centos/7/vagrant/x86_64/images/CentOS-7.box"
+    v.vm.hostname = "centos1.contoso.ltd"
+    v.vm.network "private_network", ip: "192.168.0.41"
+  end
+
+end
